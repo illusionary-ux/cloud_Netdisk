@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.cuit.cloud_netdisk.dao.UserMapper">
+
+    <update id="updateEmail">
+        UPDATE user
+        SET email = #{email}
+        WHERE user_id = #{userId}
+    </update>
+
+    <insert id="insertUser" parameterType="edu.cuit.cloud_netdisk.pojo.entity.User">
+        INSERT INTO user (
+            username,
+            password_hash,
+            email,
+            storage_limit,
+            used_storage,
+            create_time,
+            last_login,
+            last_update
+        )
+        VALUES (
+                   #{username},
+                   #{passwordHash},
+                   #{email},
+                   #{storageLimit},
+                   #{usedStorage},
+                   #{createTime},
+                   #{lastLogin},
+                   #{lastUpdate}
+               )
+    </insert>
+    <select id="checkUsernameExists" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM user
+        WHERE username = #{username}
+    </select>
+    <select id="getRolesByUserId" resultType="java.lang.String">
+        SELECT DISTINCT r.role_name
+        FROM user_role ur
+        INNER JOIN role r ON ur.role_id = r.role_id
+        WHERE ur.user_id = #{userId}
+    </select>
+    <update id="updateLastLogin">
+        UPDATE user
+        SET last_login = #{lastLogin}
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateUser" parameterType="edu.cuit.cloud_netdisk.pojo.entity.User">
+        UPDATE user
+        SET storage_limit = #{storageLimit},
+            last_update = #{lastUpdate}
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE user
+        SET password_hash = #{passwordHash}
+        WHERE email = #{email}
+    </update>
+
+
+    <select id="listUsers" resultType="edu.cuit.cloud_netdisk.pojo.entity.User">
+        SELECT 
+            user_id as userId,
+            username,
+            password_hash as passwordHash,
+            email,
+            storage_limit as storageLimit,
+            used_storage as usedStorage,
+            create_time as createTime,
+            last_login as lastLogin,
+            last_update as lastUpdate
+        FROM user
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                AND email LIKE CONCAT('%', #{email}, '%')
+            </if>
+        </where>
+        ORDER BY user_id ASC
+    </select>
+
+    <delete id="deleteUser">
+        DELETE FROM user WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteUserRoles">
+        DELETE FROM user_role WHERE user_id = #{userId}
+    </delete>
+
+    <update id="updateUsedStorage">
+        UPDATE user
+        SET used_storage = GREATEST(used_storage + #{deltaStorage}, 0),
+            last_update = NOW()
+        WHERE user_id = #{userId}
+    </update>
+</mapper>

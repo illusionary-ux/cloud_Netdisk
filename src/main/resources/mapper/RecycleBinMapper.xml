@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="edu.cuit.cloud_netdisk.dao.RecycleBinMapper">
+    <!-- 结果映射 -->
+    <resultMap id="recycleBinItemMap" type="edu.cuit.cloud_netdisk.pojo.vo.RecycleBinItemVO">
+        <id column="id" property="id"/>
+        <result column="item_id" property="itemId"/>
+        <result column="item_type" property="itemType"/>
+        <result column="name" property="name"/>
+        <result column="delete_time" property="deleteTime"/>
+        <result column="delete_user" property="deleteUser"/>
+        <result column="original_folder_id" property="originalFolderId"/>
+    </resultMap>
+
+    <!-- 查询回收站列表 -->
+    <select id="selectRecycleBinItems" resultMap="recycleBinItemMap">
+        SELECT rb.id,
+               rb.item_id,
+               rb.item_type,
+               CASE
+                   WHEN rb.item_type = 1 THEN f.file_name
+                   ELSE fd.folder_name
+               END as name,
+               rb.delete_time,
+               rb.delete_user,
+               rb.original_folder_id
+        FROM recycle_bin rb
+                 LEFT JOIN files f ON rb.item_type = 1 AND rb.item_id = f.file_id
+                 LEFT JOIN folder fd ON rb.item_type = 2 AND rb.item_id = fd.folder_id
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM recycle_bin rb2
+            WHERE rb2.item_type = 2  -- 查找是否存在已删除的父文件夹
+            AND (
+                -- 检查直接父文件夹
+                (rb.item_type = 1 AND rb.original_folder_id = CAST(rb2.item_id AS SIGNED))
+                OR 
+                -- 检查当前项是否为文件夹，且其父文件夹在回收站中
+                (rb.item_type = 2 AND rb.original_folder_id = CAST(rb2.item_id AS SIGNED))
+            )
+            AND rb2.delete_time &lt;= rb.delete_time  -- 确保父文件夹的删除时间早于或等于当前项
+        )
+        ORDER BY rb.delete_time DESC
+    </select>
+
+    <!-- 根据用户ID查询回收站列表 -->
+    <select id="selectRecycleBinItemsByUserId" resultMap="recycleBinItemMap">
+        SELECT rb.id,
+               rb.item_id,
+               rb.item_type,
+               CASE
+                   WHEN rb.item_type = 1 THEN f.file_name
+                   ELSE fd.folder_name
+               END as name,
+               rb.delete_time,
+               rb.delete_user,
+               rb.original_folder_id
+        FROM recycle_bin rb
+                 LEFT JOIN files f ON rb.item_type = 1 AND rb.item_id = f.file_id
+                 LEFT JOIN folder fd ON rb.item_type = 2 AND rb.item_id = fd.folder_id
+        WHERE rb.delete_user = #{userId}
+        AND NOT EXISTS (
+            SELECT 1
+            FROM recycle_bin rb2
+            WHERE rb2.item_type = 2  -- 查找是否存在已删除的父文件夹
+            AND (
+                -- 检查直接父文件夹
+                (rb.item_type = 1 AND rb.original_folder_id = CAST(rb2.item_id AS SIGNED))
+                OR 
+                -- 检查当前项是否为文件夹，且其父文件夹在回收站中
+                (rb.item_type = 2 AND rb.original_folder_id = CAST(rb2.item_id AS SIGNED))
+            )
+            AND rb2.delete_time &lt;= rb.delete_time  -- 确保父文件夹的删除时间早于或等于当前项
+        )
+        ORDER BY rb.delete_time DESC
+    </select>
+
+    <!-- 根据ID查询回收站项目 -->
+    <select id="selectById" resultMap="recycleBinItemMap">
+        SELECT rb.id,
+               rb.item_id,
+               rb.item_type,
+               CASE
+                   WHEN rb.item_type = 1 THEN f.file_name
+                   ELSE fd.folder_name
+               END as name,
+               rb.delete_time,
+               rb.delete_user,
+               rb.original_folder_id
+        FROM recycle_bin rb
+                 LEFT JOIN files f ON rb.item_type = 1 AND rb.item_id = f.file_id
+                 LEFT JOIN folder fd ON rb.item_type = 2 AND rb.item_id = fd.folder_id
+        WHERE rb.id = #{id}
+    </select>
+
+    <!-- 恢复文件 -->
+    <update id="restoreFile">
+        UPDATE files
+        SET is_deleted = 0,
+            upload_time = NOW()
+        WHERE file_id = #{fileId}
+    </update>
+
+    <!-- 恢复文件夹 -->
+    <update id="restoreFolder">
+        UPDATE folder
+        SET is_deleted = 0,
+            update_time = NOW()
+        WHERE folder_id = #{folderId}
+    </update>
+
+    <!-- 物理删除文件 -->
+    <delete id="deleteFile">
+        DELETE FROM files
+        WHERE file_id = #{fileId}
+    </delete>
+
+    <!-- 物理删除文件夹 -->
+    <delete id="deleteFolder">
+        DELETE FROM folder
+        WHERE folder_id = #{folderId}
+    </delete>
+
+    <!-- 删除回收站记录 -->
+    <delete id="deleteById">
+        DELETE FROM recycle_bin
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 清空回收站 -->
+    <delete id="deleteAll">
+        DELETE FROM recycle_bin
+    </delete>
+
+    <!-- 添加项目到回收站 -->
+    <insert id="insertRecycleBinItem">
+        INSERT INTO recycle_bin (
+            item_id,
+            item_type,
+            delete_time,
+            delete_user,
+            original_folder_id
+        ) VALUES (
+            #{itemId},
+            #{itemType},
+            #{deleteTime},
+            #{deleteUser},
+            #{originalFolderId}
+        )
+    </insert>
+
+    <!-- 递归删除文件夹下所有文件 -->
+    <delete id="deleteFilesByFolderRecursive" parameterType="String">
+        DELETE FROM files WHERE folder_id IN (
+            WITH RECURSIVE subfolders AS (
+                SELECT folder_id FROM folder WHERE folder_id = #{folderId}
+                UNION ALL
+                SELECT f.folder_id FROM folder f
+                INNER JOIN subfolders sf ON f.parent_folder_id = sf.folder_id
+            )
+            SELECT folder_id FROM subfolders
+        );
+    </delete>
+
+    <!-- 递归删除文件夹及其所有子文件夹 -->
+    <delete id="deleteFoldersRecursive" parameterType="String">
+        DELETE FROM folder WHERE folder_id IN (
+            WITH RECURSIVE subfolders AS (
+                SELECT folder_id FROM folder WHERE folder_id = #{folderId}
+                UNION ALL
+                SELECT f.folder_id FROM folder f
+                INNER JOIN subfolders sf ON f.parent_folder_id = sf.folder_id
+            )
+            SELECT folder_id FROM subfolders
+        );
+    </delete>
+
+    <!-- 根据文件夹ID和用户ID查询回收站记录ID -->
+    <select id="selectByFolderId" resultType="java.lang.Long">
+        SELECT id FROM recycle_bin WHERE item_id = #{folderId} AND item_type = 2 AND delete_user = #{userId} LIMIT 1
+    </select>
+    <!-- 根据文件ID和用户ID查询回收站记录ID -->
+    <select id="selectByFileId" resultType="java.lang.Long">
+        SELECT id FROM recycle_bin WHERE item_id = #{fileId} AND item_type = 1 AND delete_user = #{userId} LIMIT 1
+    </select>
+
+    <delete id="deleteByItemIdAndType">
+        DELETE FROM recycle_bin WHERE item_id = #{itemId} AND item_type = #{itemType}
+    </delete>
+
+    <select id="selectFileRecycleIdsByFolderId" resultType="java.lang.Long">
+        SELECT id FROM recycle_bin WHERE original_folder_id = #{folderId} AND item_type = 1
+    </select>
+</mapper> 

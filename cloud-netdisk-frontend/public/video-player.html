@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频预览</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+        #videoPlayer {
+            max-width: 90%;
+            max-height: 70vh;
+            display: block;
+        }
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .controls button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+        .controls button:hover {
+            background-color: #1565c0;
+        }
+        .error-message {
+            color: #ff4d4f;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            max-width: 80%;
+            text-align: center;
+        }
+        .alternative {
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .videoUrlInfo {
+            background: rgba(50, 50, 50, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            word-break: break-all;
+            max-width: 90%;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="videoTitle">视频预览</h1>
+    
+    <video id="videoPlayer" controls autoplay>
+        您的浏览器不支持视频预览
+    </video>
+    
+    <div id="errorMessage" class="error-message" style="display:none;">
+        无法播放视频，可能是格式不支持或播放权限问题
+    </div>
+    
+    <div class="videoUrlInfo" id="videoUrlInfo"></div>
+    
+    <div class="controls">
+        <button onclick="window.close()">关闭</button>
+        <button onclick="downloadVideo()">下载</button>
+        <button onclick="toggleUrlInfo()">显示URL信息</button>
+    </div>
+    
+    <div id="alternative" class="alternative" style="display:none;">
+        <h3>无法播放该视频？</h3>
+        <p>您可以尝试以下方法：</p>
+        <button onclick="downloadVideo()">下载后播放</button>
+        <button onclick="openInDefaultPlayer()">使用默认播放器</button>
+    </div>
+
+    <script>
+        let videoUrl = '';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 从URL参数获取视频信息
+            const urlParams = new URLSearchParams(window.location.search);
+            videoUrl = urlParams.get('url');
+            const videoTitle = urlParams.get('title');
+            
+            if (videoUrl) {
+                const videoPlayer = document.getElementById('videoPlayer');
+                const decodedUrl = decodeURIComponent(videoUrl);
+                videoPlayer.src = decodedUrl;
+                
+                // 显示URL信息（隐藏状态）
+                document.getElementById('videoUrlInfo').textContent = '视频URL: ' + decodedUrl;
+                
+                if (videoTitle) {
+                    document.getElementById('videoTitle').textContent = decodeURIComponent(videoTitle);
+                    document.title = decodeURIComponent(videoTitle);
+                }
+            } else {
+                document.body.innerHTML = '<h1>错误: 未提供视频URL</h1>';
+            }
+        });
+        
+        // 监听视频错误
+        document.getElementById('videoPlayer').addEventListener('error', function(e) {
+            console.error('视频加载错误:', e);
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('alternative').style.display = 'block';
+            
+            const error = e.target.error;
+            if (error) {
+                const errorDetails = '错误代码: ' + error.code + (error.message ? ', 错误信息: ' + error.message : '');
+                document.getElementById('errorMessage').textContent += ' (' + errorDetails + ')';
+                console.error(errorDetails);
+            }
+        });
+        
+        function toggleUrlInfo() {
+            const urlInfo = document.getElementById('videoUrlInfo');
+            if (urlInfo.style.display === 'none' || !urlInfo.style.display) {
+                urlInfo.style.display = 'block';
+            } else {
+                urlInfo.style.display = 'none';
+            }
+        }
+        
+        function downloadVideo() {
+            if (videoUrl) {
+                const a = document.createElement('a');
+                a.href = decodeURIComponent(videoUrl);
+                a.download = document.getElementById('videoTitle').textContent || '视频';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+        
+        function openInDefaultPlayer() {
+            if (videoUrl) {
+                window.location.href = decodeURIComponent(videoUrl);
+            }
+        }
+    </script>
+</body>
+</html> 

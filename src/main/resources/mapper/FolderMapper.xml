@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.cuit.cloud_netdisk.dao.FolderMapper">
+    <sql id="Base_Column_List">
+        folder_id, folder_name, user_id, parent_folder_id, folder_size, create_time, update_time, is_deleted
+    </sql>
+
+    <select id="selectByParentId" resultType="edu.cuit.cloud_netdisk.pojo.entity.Folder">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM folder
+        WHERE parent_folder_id = #{parentFolderId}
+        AND is_deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByFolderId" resultType="edu.cuit.cloud_netdisk.pojo.entity.Folder">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM folder
+        WHERE folder_id = #{folderId}
+        AND is_deleted = 0
+    </select>
+
+    <select id="checkFolderNameExist" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM folder
+        WHERE parent_folder_id = #{parentFolderId}
+          AND folder_name = #{folderName}
+          AND is_deleted = 0
+    </select>
+
+    <update id="softDeleteFolder">
+        UPDATE folder
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE folder_id = #{folderId}
+    </update>
+
+    <!-- 更新文件夹大小 -->
+    <update id="updateFolderSize">
+        UPDATE folder
+        SET folder_size = folder_size + #{sizeDelta},
+            update_time = NOW()
+        WHERE folder_id = #{folderId}
+    </update>
+
+    <!-- 递归查询文件夹路径 -->
+    <select id="selectFolderPath" resultType="edu.cuit.cloud_netdisk.pojo.entity.Folder">
+        WITH RECURSIVE folder_hierarchy AS (
+            -- 基础查询：获取当前文件夹
+            SELECT
+                folder.folder_id AS folder_id,
+                folder.folder_name AS folder_name,
+                folder.user_id AS user_id,
+                folder.parent_folder_id AS parent_folder_id,
+                folder.folder_size AS folder_size,
+                folder.create_time AS create_time,
+                folder.update_time AS update_time,
+                folder.is_deleted AS is_deleted
+            FROM folder
+            WHERE folder.folder_id = #{folderId}
+              AND folder.is_deleted = 0
+
+            UNION ALL
+
+            -- 递归查询：获取父文件夹
+            SELECT
+                parent.folder_id,
+                parent.folder_name,
+                parent.user_id,
+                parent.parent_folder_id,
+                parent.folder_size,
+                parent.create_time,
+                parent.update_time,
+                parent.is_deleted
+            FROM folder parent
+                     INNER JOIN folder_hierarchy child
+                                ON parent.folder_id = child.parent_folder_id
+            WHERE parent.is_deleted = 0
+        )
+        SELECT
+            h.folder_id,
+            h.folder_name,
+            h.user_id,
+            h.parent_folder_id,
+            h.folder_size,
+            h.create_time,
+            h.update_time,
+            h.is_deleted
+        FROM folder_hierarchy h
+        ORDER BY h.parent_folder_id ASC
+    </select>
+
+    <!-- 插入文件夹 -->
+    <insert id="insert" parameterType="edu.cuit.cloud_netdisk.pojo.entity.Folder"
+            useGeneratedKeys="true" keyProperty="folderId">
+        INSERT INTO folder (
+            folder_name,
+            user_id,
+            parent_folder_id,
+            folder_size,
+            create_time,
+            update_time,
+            is_deleted
+        ) VALUES (
+            #{folderName},
+            #{userId},
+            #{parentFolderId},
+            0,
+            #{createTime},
+            #{updateTime},
+            #{isDeleted}
+        )
+    </insert>
+
+    <!-- 递归软删除文件夹及其所有子文件夹 -->
+    <update id="softDeleteFolderRecursive">
+        UPDATE folder
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE folder_id IN (
+            WITH RECURSIVE subfolders AS (
+                SELECT folder_id FROM folder WHERE folder_id = #{folderId}
+                UNION ALL
+                SELECT f.folder_id FROM folder f
+                INNER JOIN subfolders sf ON f.parent_folder_id = sf.folder_id
+            )
+            SELECT folder_id FROM subfolders
+        );
+    </update>
+
+    <!-- 递归查询指定文件夹及其所有子文件夹id -->
+    <select id="selectAllFolderIdsRecursive" resultType="java.lang.Long">
+        WITH RECURSIVE subfolders AS (
+            SELECT folder_id FROM folder WHERE folder_id = #{folderId}
+            UNION ALL
+            SELECT f.folder_id FROM folder f
+            INNER JOIN subfolders sf ON f.parent_folder_id = sf.folder_id
+        )
+        SELECT folder_id FROM subfolders;
+    </select>
+
+    <!-- 恢复文件夹 -->
+    <update id="restoreFolder">
+        UPDATE folder
+        SET is_deleted = 0,
+            update_time = NOW()
+        WHERE folder_id = #{folderId}
+    </update>
+
+    <!-- 根据文件夹ID查询文件夹大小 -->
+    <select id="selectFolderSizeById" resultType="java.lang.Long">
+        SELECT folder_size FROM folder WHERE folder_id = #{folderId}
+    </select>
+</mapper>

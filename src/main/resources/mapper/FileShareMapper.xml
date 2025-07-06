@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.cuit.cloud_netdisk.dao.FileShareMapper">
+    <resultMap id="FileShareResultMap" type="edu.cuit.cloud_netdisk.pojo.entity.FileShare">
+        <id property="urlid" column="urlid" />
+        <result property="fileid" column="fileid" />
+        <result property="filename" column="filename" />
+        <result property="password" column="password" />
+        <result property="creatorId" column="creator_id" />
+        <result property="createTime" column="create_time" />
+        <result property="shareCount" column="share_count" />
+        <result property="isExpired" column="is_expired" />
+    </resultMap>
+
+    <insert id="insertFileShare" parameterType="edu.cuit.cloud_netdisk.pojo.entity.FileShare">
+        INSERT INTO fileshare (urlid, fileid, filename, password, creator_id, create_time, share_count, is_expired)
+        VALUES (#{urlid}, #{fileid}, #{filename}, #{password}, #{creatorId}, #{createTime}, #{shareCount}, #{isExpired})
+    </insert>
+
+    <delete id="deleteFileShare" parameterType="String">
+        DELETE FROM fileshare WHERE urlid = #{urlid}
+    </delete>
+
+    <update id="updateFileShare" parameterType="edu.cuit.cloud_netdisk.pojo.entity.FileShare">
+        UPDATE fileshare
+        SET fileid = #{fileid},
+            filename = #{filename},
+            password = #{password},
+            creator_id = #{creatorId},
+            create_time = #{createTime},
+            share_count = #{shareCount},
+            is_expired = #{isExpired}
+        WHERE urlid = #{urlid}
+    </update>
+
+    <select id="selectFileShareById" parameterType="String" resultMap="FileShareResultMap">
+        SELECT * FROM fileshare WHERE urlid = #{urlid}
+    </select>
+
+    <select id="selectAllFileShares" resultMap="FileShareResultMap">
+        SELECT * FROM fileshare
+    </select>
+
+    <select id="selectFileSharesByUserId" parameterType="long" resultMap="FileShareResultMap">
+        SELECT * FROM fileshare WHERE creator_id = #{creatorId}
+    </select>
+
+    <!--
+        通过文件ID查找分享信息
+        @param fileid 文件ID
+        @return 分享信息列表
+    -->
+    <select id="selectFileSharesByFileId" parameterType="String" resultMap="FileShareResultMap">
+        SELECT * FROM fileshare WHERE fileid = #{fileid}
+    </select>
+
+    <!--
+        通过文件ID删除分享记录
+        @param fileid 文件ID
+        @return 删除的记录数
+    -->
+    <delete id="deleteFileSharesByFileId" parameterType="String">
+        DELETE FROM fileshare WHERE fileid = #{fileid}
+    </delete>
+
+    <!--
+        通过文件ID标记分享记录为失效
+        @param fileid 文件ID
+        @return 更新的记录数
+    -->
+    <update id="markFileSharesAsExpiredByFileId" parameterType="String">
+        UPDATE fileshare SET is_expired = true WHERE fileid = #{fileid}
+    </update>
+
+    <!--
+        检查文件是否有有效的分享链接
+        @param fileid 文件ID
+        @return 有效分享链接的数量
+    -->
+    <select id="countValidSharesByFileId" parameterType="String" resultType="int">
+        SELECT COUNT(*) FROM fileshare WHERE fileid = #{fileid} AND is_expired = false
+    </select>
+</mapper> 

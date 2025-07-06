@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.cuit.cloud_netdisk.dao.RoleMapper">
+
+    <select id="selectRolesByUserId" resultType="edu.cuit.cloud_netdisk.pojo.entity.Role">
+        SELECT r.*
+        FROM role r
+                 INNER JOIN user_role ur ON r.role_id = ur.role_id
+        WHERE ur.user_id = #{userId}
+    </select>
+
+</mapper>

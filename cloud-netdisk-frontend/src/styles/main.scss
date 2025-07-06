@@ -1,0 +1,88 @@
+@use "sass:color";
+
+// 重置样式
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+// 全局变量
+:root {
+  --primary-color: #409EFF;
+  --success-color: #67C23A;
+  --warning-color: #E6A23C;
+  --danger-color: #F56C6C;
+  --info-color: #909399;
+  --text-color: #303133;
+  --text-color-secondary: #606266;
+  --border-color: #DCDFE6;
+  --background-color: rgba(250, 250, 250, 0.93);
+}
+
+// 全局样式
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-color);
+  background: linear-gradient(135deg, rgba(250, 252, 255, 0.87) 5%, rgba(202, 225, 243, 0.8) 100%);
+}
+
+// Element Plus 样式覆盖
+.el-button {
+  font-weight: 500;
+  
+  &--primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    
+    &:hover,
+    &:focus {
+      background-color: color.adjust(#409EFF, $lightness: 10%);
+      border-color: color.adjust(#409EFF, $lightness: 10%);
+    }
+  }
+}
+
+.el-input {
+  .el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--border-color) inset;
+    
+    &:hover {
+      box-shadow: 0 0 0 1px var(--primary-color) inset;
+    }
+    
+    &.is-focus {
+      box-shadow: 0 0 0 1px var(--primary-color) inset;
+    }
+  }
+}
+
+.el-table {
+  --el-table-border-color: var(--border-color);
+  --el-table-header-bg-color: var(--background-color);
+  
+  th {
+    font-weight: 600;
+  }
+}
+
+.el-dialog {
+  border-radius: 8px;
+  
+  .el-dialog__header {
+    margin: 0;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .el-dialog__body {
+    padding: 20px;
+  }
+  
+  .el-dialog__footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+  }
+} 
